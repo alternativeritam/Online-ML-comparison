@@ -184,12 +184,7 @@ def build_model(df, model, split_size, seed_number, label):
     if label != "":
         dataTypeObj = df.dtypes[label]
         Y = df[[label]]
-        if(dataTypeObj == np.object):
-            labelencoder_Y = LabelEncoder()
-            Y = labelencoder_Y.fit_transform(Y)
         # Using all column except for the last column as X
-        else:
-            Y = df[[label]]
         X = df.drop([label], axis=1)
         progress = 1
 
@@ -362,7 +357,6 @@ def app1(uploaded_file):
     df = pd.read_csv(uploaded_file)
     st.markdown('**1.1. Glimpse of dataset**')
     st.write(df)
-    label = st.text_input(
-        "Enter the column name for label", "")
-    if label != "":
-        build_model(df, model, split_size, seed_number, label)
+    col_list = list(df.columns)
+    label = st.selectbox("Select the label", col_list)
+    build_model(df, model, split_size, seed_number, label)

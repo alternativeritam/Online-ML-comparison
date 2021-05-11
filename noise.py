@@ -48,17 +48,6 @@ def app2(uploaded_file):
     def unecessary_col(data, label):
         l = len(data.columns)
         col_list = list(data.columns)
-        dataTypeObj = df.dtypes[label]
-        if(dataTypeObj == np.object):
-            labelencoder_Y = LabelEncoder()
-            df[[label]] = labelencoder_Y.fit_transform(df[[label]])
-
-        for i in range(l):
-            dataTypeObj = df.dtypes[col_list[i]]
-            if(dataTypeObj == np.object):
-                labelencoder_Y = LabelEncoder()
-                df[[col_list[i]]] = labelencoder_Y.fit_transform(
-                    df[[col_list[i]]])
         index = l-1
         for i in range(l):
             if label == col_list[i]:
@@ -72,8 +61,8 @@ def app2(uploaded_file):
             if(corr_value[i] < 0.05 and corr_value[i] > -0.05):
                 unused_col.append(col_list[i])
         if(len(unused_col) == 0):
-            return "No unnecessary column"
-        return unused_col
+            return "No unnecessary column", data
+        return unused_col, data
 
     # download the correct dataset
 
@@ -136,6 +125,11 @@ def app2(uploaded_file):
         st.markdown('**1.1. Glimpse of dataset**')
         st.write(df)
         df = df.loc[:, ~df.columns.str.match("Unnamed")]
+        for label, content in df.items():
+            if pd.api.types.is_string_dtype(content):
+                df[label] = content.astype("category").cat.codes
+        st.markdown("**New prepared dataset**")
+        st.write(df)
         noise_col = noise(df)
         if(len(noise_col) == 0):
             st.success("No missing value present")
@@ -143,21 +137,25 @@ def app2(uploaded_file):
             st.warning("These column contain missing values :\n")
             for i in range(len(noise_col)):
                 st.error(noise_col[i])
-        label = st.text_input("Enter Your label name")
+        col_list = list(df.columns)
+        new_data = correct(df, noise_col)
+        st.markdown(filedownload(new_data, "Corrected_dataset"),
+                    unsafe_allow_html=True)
+
+        # missing values case ends
+
+        label = st.selectbox("Enter Your label name", col_list)
         if label != "":
 
-            string = unecessary_col(df, label)
+            string, new_data = unecessary_col(df, label)
             if(string == "No unnecessary column"):
                 st.success("No unnecessary column")
             else:
                 st.warning("Unecessary columns are : ")
                 for i in range(len(string)):
                     st.error(string[i])
-            new_data = correct(df, noise_col)
-            st.markdown(filedownload(new_data, "Corrected_dataset"),
-                        unsafe_allow_html=True)
 
-            # detect noise of columns using boxplot
+            # Drop unnecessary columns
             if string != "No unnecessary column":
                 drop = st.checkbox("Drop unncessary column")
                 if drop:
@@ -171,8 +169,7 @@ def app2(uploaded_file):
                 a = 0
                 st.markdown("Dataset anamolies")
 
-                user_input = st.text_input(
-                    "Write the column name for to check the noise", "")
+                user_input = st.selectbox("Select the column", col_list)
                 if user_input != "":
                     if user_input not in col_list:
                         st.write("Enter valid column")
